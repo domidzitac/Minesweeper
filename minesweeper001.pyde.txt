@@ -1,0 +1,124 @@
+add_library('sound')
+from random import randint, choice
+import os
+
+path = os.getcwd()
+
+class Tile:
+    def __init__(self,r,c,w,h):
+        self.r=r
+        self.c=c
+        self.w=w
+        self.h=h
+        self.v='0'
+        self.s='hidden'
+        self.img=loadImage("0.png")
+        self.hiddenImg=loadImage("tile.png")
+    
+    def display(self):
+        if self.s=='hidden':
+            image(self.hiddenImg,self.c*self.w,self.r*self.h)
+        else:
+            image(self.img,self.c*self.w,self.r*self.h)
+
+class MineSweeper:
+    def __init__(self,numRows,numCols,numMines):
+        self.numRows=numRows
+        self.numCols=numCols
+        self.numMines=numMines
+        
+    def createGame(self):
+        self.leftTiles=self.numRows*self.numCols
+        self.board=[]
+        self.gameOver=False
+        self.goImage=loadImage("gameover.png")
+        self.winImage=loadImage("win.png")
+        self.winSound = SoundFile(this, path+"/tada.mp3")
+        self.goSound = SoundFile(this, path+"/gameover.wav")
+        
+        for r in range(self.numRows):
+            for c in range(self.numCols):
+                self.board.append(Tile(r,c,52,52))
+        self.assignMines()
+        self.assignNumbers()
+                
+    def assignMines(self):
+        for i in range(self.numMines):
+            t = choice(self.board)
+            while t.v == "m":
+                t = choice(self.board)
+            t.v = "m"
+            t.img = loadImage("mine.png")
+            
+    def assignNumbers(self):
+        for t in self.board:
+            if t.v != "m":
+                for r in [t.r-1,t.r,t.r+1]:
+                    for c in [t.c-1,t.c,t.c+1]:
+                        nt = self.findTile(r,c)
+                        if nt != None and nt.v=='m':
+                            t.v = str(int(t.v)+1)
+                t.img=loadImage(t.v+'.png')
+                        
+    def findTile(self,r,c):
+        for t in self.board:
+            if t.r==r and t.c==c:
+                return t
+        return None
+    
+    def uncover(self,t):
+        if t.v=='m':
+            self.gameOver=True
+            self.goSound.play()
+            for t in self.board:
+                t.s='uncover'
+            return
+        
+        if t.v!='0':
+            t.s='uncover'
+            self.leftTiles-=1
+            if self.leftTiles == self.numMines:
+                self.winSound.play()
+            return
+        
+        t.s='uncover'
+        self.leftTiles-=1
+        if self.leftTiles == self.numMines:
+                self.winSound.play()
+        for r in [t.r-1,t.r,t.r+1]:
+            for c in [t.c-1,t.c,t.c+1]:
+                try:
+                    if self.findTile(r,c).s == 'hidden':
+                        self.uncover(self.findTile(r,c))
+                except:
+                    pass
+                        
+    def display(self):
+        for t in self.board:
+            t.display()
+        if self.gameOver:
+            image(self.goImage,20,20)
+        elif self.leftTiles == self.numMines:
+            image(self.winImage,20,20)
+
+ms = MineSweeper(10,10,5)
+
+def setup():
+    size(ms.numCols*52,ms.numRows*52)
+    background(0)
+    ms.createGame()
+    
+def draw():
+    ms.display()
+
+def mouseClicked():
+    if ms.gameOver or ms.leftTiles==ms.numMines:
+        ms.createGame()
+        return
+        
+    for t in ms.board:
+        if t.c*52 < mouseX < t.c*52+52 and t.r*52 < mouseY < t.r*52+52:
+            ms.uncover(t)
+            break
+
+
